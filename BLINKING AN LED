@@ -1,0 +1,20 @@
+#include <stdint.h>
+
+int main() {
+(*(unsigned int *)0x40021034) = 1;//TURNS ON CLOCK FOR IO PORTS AND GPIOA TO BE PRECISED
+(*(unsigned int *)0x50000000) = (1<<10);// SETS PIN PA5 MODE TO OUTPUT 
+
+while(1) {
+  (*(unsigned int volatile *)0x50000014) |= (1<<5);// SETS PA5 TO STATE 1 TO OUTPUT DATA
+  volatile int DELAY = 0;
+  while(DELAY < 1000000){//A SIMPLE DELAY LOOP 
+    DELAY++;
+  }
+   (*(unsigned int volatile *)0x50000014) &= (0<<5);//SETS PA5 TO 0 STATE
+   DELAY = 0;
+   while(DELAY < 1000000){//A SIMPLE DELAY LOOP
+    DELAY++;
+  }
+}
+  return 0;
+}
