@@ -1,0 +1,22 @@
+#include "stm32c031xx.h"
+#include <stdint.h>
+
+void DELAY (void);
+void DELAY (void) {//DELAY FUNCTION
+volatile int TIMER = 0;
+  while(TIMER < 1000000){
+    TIMER++;
+}
+}
+int main() { 
+RCC->IOPENR = 1;
+GPIOA->MODER &= (0<<10);//CLEAR BITS
+GPIOA->MODER |= (1<<10);// SETS PA5 TO OUPUT MODE
+while(1) {
+  GPIOA->ODR |= (1<<5);//PA5 SET TO 1 AND OUTPUTS DATA
+  DELAY();
+  GPIOA->ODR &= (0<<5);//PA5 SET TO 0 AND OUTPUT SDATA
+  DELAY();  
+}
+  return 0;
+}
