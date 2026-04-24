@@ -1,0 +1,25 @@
+#include <stdint.h>
+#define RCC_IOPENR (*(unsigned int *)0x40021034)//PLUS OFFSET 0X34
+#define GPIOA_BASE 0x50000000u 
+#define GPIOA_MODER (*((volatile unsigned int *)(GPIOA_BASE + 0X00)))//0x00 offset
+#define GPIOA_ODR (*(unsigned int volatile *)(GPIOA_BASE + 0X14))//0x14 offset
+
+void DELAY (void);
+void DELAY (void) {//DELAY FUNCTION
+volatile int TIMER = 0;
+  while(TIMER < 1000000){
+    TIMER++;
+}
+}
+int main() { 
+RCC_IOPENR = 1;
+GPIOA_MODER &= (0<<10);//CLEAR BITS
+GPIOA_MODER |= (1<<10);// SETS PA5 TO OUPUT MODE
+while(1) {
+  GPIOA_ODR |= (1<<5);//PA5 SET TO 1 AND OUTPUTS DATA
+  DELAY();
+  GPIOA_ODR &= (0<<5);//PA5 SET TO 0 AND OUTPUT SDATA
+  DELAY();  
+}
+  return 0;
+}
