@@ -1,0 +1,24 @@
+#include "stm32c031xx.h"
+#include <stdint.h>
+
+void TIM3_INIT(void);
+void TIM3_INIT(void) {//DELAY FUNCTION
+RCC->APBENR1 |= (1<<1);
+TIM3->PSC = 47999;
+TIM3->ARR = 600;
+TIM3->CR1 |= (1<<0);
+}
+
+int main() { 
+RCC->IOPENR = 1;
+GPIOA->MODER &= (0<<10);//CLEAR BITS
+GPIOA->MODER |= (1<<10);// SETS PA5 TO OUPUT MODE
+  TIM3_INIT();//CALLS THE TIMER TO START COUNTING
+while (1) {
+if(TIM3->SR &= 1) {
+GPIOA->ODR ^= (1<<5);//PA5 IS TOGGLED WITHIN EACH WHILE 
+TIM3->SR &= (0<<0);//RESETS STATUS REGISTER TO 0
+}
+}
+  return 0;
+}
