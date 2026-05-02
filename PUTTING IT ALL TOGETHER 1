@@ -1,0 +1,115 @@
+#include "stm32c031xx.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+
+// power switch to control all peripheral
+//led on to indicate power 
+//a blinking led controlled by a timer
+//one led controlledby a potentiometr 
+//one led controlled by a push button
+void DELAY(uint32_t volatile inter);//a delay function
+void DELAY(uint32_t volatile inter) {
+  for(int volatile x = 0; x < inter; x++);
+}
+void TIMER_INIT(void);// A TIMER FUNCTION USED TO BLINK THE LED
+void TIMER_INIT(void) {
+TIM3->PSC = 47999;
+TIM3->ARR = 50;
+TIM3->CR1 |= (1<<0);
+}
+void BLINK (void);//THE BLINKING LED FUNCTION
+void BLINK (void) {
+  if(TIM3->SR &= (1<<0)) {//CHECKS TIM3_SR (UIF) STATUS REGISTER
+    GPIOA->ODR ^= (1 << 12);//TOGGLES PA12 BETWEEN 0 AND 1
+  }
+}
+void PWM_INIT(void);//PWM FUNCTION
+void PWM_INIT(void) {
+GPIOA->AFR[1] &= ~(15 << 0);//CLEARS BITS 
+GPIOA->AFR[1] |= (1 << 1);//AF2 FOR PA15
+ 
+  TIM1->CCMR1 &= ~(7 << 4);//CLEARS BIT 4,5,6 OC1M
+  TIM1->CCMR1 |= (6<<4);//SETS TIM1 TO PWM MODE (110)
+  TIM1->CCMR1 |= (1<<3);//SETS TIM1 TO PRELOAD MODE (OC1PE)
+ 
+  TIM1->BDTR |= (1<<15);//MAIN OUTPUT ENABLE (MOE)
+  TIM1->CCER &= ~(1 << 0);//CLEARS BITS
+  TIM1->CCER |= (1<<0);//SETS PWM TO HIGH INITIAL STATE(CC1E)
+   TIM1->PSC = 288;
+  TIM1->ARR = 4095;
+   TIM1->CCR1 = 0;// CAPTURE/COMPARE REGISTER SETS TO ZERO
+  TIM1->CR1 &= ~(1 << 0);
+  TIM1->CR1 |= (1<<0);//STARTS CLOCK
+}
+int main() {
+RCC->IOPENR = (3<<0);//TURNS ON CLOCK FOR PORT IO A & B
+RCC->APBENR1 = (2<<0);//ENABLE TIM3
+RCC->APBENR2 |= (1<<20);//ENABLE ADC
+RCC->APBENR2 |= (1<<11);//ENABLE TIM1
+
+GPIOB->MODER &= ~(3 << 6);//MODE OUTPUT FOR PB3
+GPIOB->MODER &= ~(3 << 12);//CLEARS BIT FOR PB7
+GPIOB->MODER |= (1<<12);//SETS PB7 TO OUTPUT
+GPIOA->MODER &= ~(3 << 10);//CLEARS BIT FOR PA5
+GPIOA->MODER |= (1<<10);//SETS PA5 TO OUTPUT MODE
+GPIOA->MODER &= ~(3 << 12);//SETS PA6 TO OUTPUT MODE
+GPIOA->MODER &= ~(3 << 24);//CLEARS BIT PA12
+GPIOA->MODER |= (1<<24);//SETS PA12 TO INPUT MODE
+GPIOA->MODER &= ~(3 << 16);//CLEARS BIT PA8
+GPIOA->MODER |= (1<<17);//SETS PA8 TO AF
+GPIOA->MODER &= ~(3 << 22);//CLEARS BIT PA11
+GPIOA->MODER |= (3<<22);//SETS PA11 TO ANALOG MODE
+GPIOA->PUPDR &= ~(3 << 12);//CLEARS PA6
+GPIOA->PUPDR |= (1<<12);//SETS PA6 TO HIGH STATE
+GPIOB->PUPDR &= ~(3 << 6);//CLEARS BIT PB3
+GPIOB->PUPDR |= (1<<6);//SETS PB3 TO HIGH
+GPIOA->OSPEEDR &= ~(3 << 12);//CLEARS BIT PA6
+GPIOA->OSPEEDR |= (3<<12);//SETS PA6 TO ULTRAL FAST RESPONSE
+
+ADC1->CHSELR |= (1<<11);//TURNS ON CHANNEL 11 
+ADC1->CR |= (1<<31);//START CALIBRATION
+while(ADC1->CR & (1<<31));//WAITFOR CALIBRAION TO BE FINISHED
+ADC1->CR |= (1<<0);//ENABLES ADC (ADEN)
+while(!(ADC1->ISR & (1<<0)));//(ADRY)
+
+TIMER_INIT();
+PWM_INIT();
+
+uint8_t volatile power_state = 0;
+while(1) {
+  if(!(GPIOA->IDR &= (1<<6))) {//STARTING POINT
+    DELAY(70000);
+    while(power_state == 0) {
+    GPIOA->ODR |= (1<<5);
+    BLINK();
+    if(!(GPIOB->IDR & (1<<3))) {
+      DELAY(70000);
+      GPIOB->ODR ^= (1<<6);
+    }
+    ADC1->CR |= (1<<2);//STARTS ADC TO GET DATA(ADSTART)
+    while(!(ADC1->ISR & (1<<2)));//WAIT FOR DATA (EOC)
+    TIM1->CCR1 = ADC1->DR;//WRITE ADC DATA TO TIM1 CCR
+
+    if(!(GPIOA->IDR &= (1<<6))) { //CHECKS IF POWER BUTTON IS PUSHED
+    power_state = 1;
+      break;
+    }else {
+      power_state = 0;
+      TIM3->SR &= ~(1 << 0);
+    }
+    }
+  }else {//TURNS OFF EVERY UNIT
+     TIM1->CCR1 = 0;
+     GPIOA->ODR &= ~(1 << 5);
+     power_state = 0;
+     GPIOA->ODR &= ~(1 << 12);
+     GPIOB->ODR &= ~(1 << 6);
+  }
+}
+
+
+
+  return 0;
+}
